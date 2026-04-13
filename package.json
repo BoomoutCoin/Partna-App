@@ -1,0 +1,25 @@
+{
+  "name": "partna-wallet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PartNA Wallet — rotating savings circles on Base",
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r exec rm -rf dist node_modules .turbo",
+    "mobile": "pnpm --filter @partna/mobile",
+    "api": "pnpm --filter @partna/api",
+    "types": "pnpm --filter @partna/types"
+  },
+  "devDependencies": {
+    "typescript": "5.5.4",
+    "@types/node": "20.14.10"
+  }
+}

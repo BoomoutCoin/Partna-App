@@ -1,0 +1,28 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": [
+        "--env-file=apps/api/.env",
+        "--import",
+        "tsx/esm",
+        "apps/api/src/index.ts"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": [
+        "node_modules/expo/bin/cli",
+        "start",
+        "--web",
+        "--port",
+        "19006"
+      ],
+      "port": 19006
+    }
+  ]
+}

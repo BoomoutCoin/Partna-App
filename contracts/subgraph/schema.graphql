@@ -1,0 +1,55 @@
+"""
+PartNA Wallet subgraph schema — The Graph.
+
+Indexes all SusuPool events from the PoolFactory registry on Base.
+Entities map 1:1 to the types in @partna/types (Pool, PoolMember).
+"""
+
+type Pool @entity {
+  "SusuPool contract address (lowercase)"
+  id: ID!
+  organiser: Bytes!
+  status: PoolStatus!
+  contribution: BigInt!
+  numMembers: Int!
+  intervalSeconds: BigInt!
+  currentCycle: Int!
+  cycleDeadline: BigInt!
+  currentPot: BigInt!
+  totalContributed: BigInt!
+  feeBps: Int!
+  createdAt: BigInt!
+  members: [Member!]! @derivedFrom(field: "pool")
+}
+
+enum PoolStatus {
+  FILLING
+  ACTIVE
+  COMPLETED
+}
+
+type Member @entity {
+  "Composite: poolAddress-memberAddress"
+  id: ID!
+  pool: Pool!
+  address: Bytes!
+  rotationIndex: Int!
+  hasReceivedPayout: Boolean!
+  slashed: Boolean!
+  paidThisCycle: Boolean!
+  onTimeCycles: Int!
+  totalCycles: Int!
+  joinedAt: BigInt!
+}
+
+type PoolCreatedEvent @entity(immutable: true) {
+  id: ID!
+  pool: Bytes!
+  organiser: Bytes!
+  contribution: BigInt!
+  numMembers: Int!
+  intervalSecs: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

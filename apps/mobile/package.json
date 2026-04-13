@@ -1,0 +1,52 @@
+{
+  "name": "@partna/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apollo/client": "3.11.8",
+    "@partna/types": "workspace:*",
+    "@privy-io/expo": "0.35.0",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@shopify/flash-list": "1.6.4",
+    "@tanstack/react-query": "5.59.0",
+    "@walletconnect/react-native-compat": "2.17.0",
+    "expo": "51.0.39",
+    "expo-constants": "16.0.2",
+    "expo-haptics": "13.0.1",
+    "expo-linking": "6.3.1",
+    "expo-local-authentication": "14.0.1",
+    "expo-notifications": "0.28.19",
+    "expo-router": "3.5.23",
+    "expo-secure-store": "13.0.2",
+    "expo-splash-screen": "0.27.7",
+    "expo-status-bar": "1.12.1",
+    "graphql": "16.9.0",
+    "ky": "1.7.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-gesture-handler": "2.16.2",
+    "react-native-reanimated": "3.10.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1",
+    "react-native-svg": "15.2.0",
+    "react-native-web": "0.19.13",
+    "viem": "2.21.25",
+    "wagmi": "2.12.17",
+    "zustand": "4.5.5"
+  },
+  "devDependencies": {
+    "@babel/core": "7.25.2",
+    "@types/react": "18.2.79",
+    "typescript": "5.5.4"
+  }
+}
