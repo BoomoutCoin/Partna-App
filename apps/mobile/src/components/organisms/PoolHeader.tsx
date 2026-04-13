@@ -83,6 +83,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     padding: spacing.s6,
     gap: spacing.s4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   titleCol: { flex: 1, gap: spacing.s2 },

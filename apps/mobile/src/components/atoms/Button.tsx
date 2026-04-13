@@ -1,17 +1,9 @@
 /**
- * Button — 4 variants (primary/secondary/danger/ghost), 3 sizes (sm/md/lg),
- * loading state, haptic feedback on press.
+ * Button — 4 variants, 3 sizes, loading, haptics. Dark theme.
  */
 
 import { memo, useCallback } from "react";
-import {
-  Pressable,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  type ViewStyle,
-  type TextStyle,
-} from "react-native";
+import { Pressable, Text, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle } from "react-native";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, typography } from "../../theme";
 
@@ -36,9 +28,9 @@ const bgMap: Record<Variant, string> = {
 
 const labelColorMap: Record<Variant, string> = {
   primary: "#FFFFFF",
-  secondary: colors.ink.primary,
+  secondary: colors.ink.secondary,
   danger: "#FFFFFF",
-  ghost: colors.brand.green,
+  ghost: colors.brand.greenLight,
 };
 
 const heightMap: Record<Size, number> = { sm: 36, md: 48, lg: 56 };
@@ -49,14 +41,7 @@ const fontMap: Record<Size, TextStyle> = {
   lg: typography.bodyMedium as TextStyle,
 };
 
-function ButtonInner({
-  label,
-  onPress,
-  variant = "primary",
-  size = "md",
-  loading = false,
-  disabled = false,
-}: ButtonProps) {
+function ButtonInner({ label, onPress, variant = "primary", size = "md", loading = false, disabled = false }: ButtonProps) {
   const handlePress = useCallback(() => {
     if (loading || disabled) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -64,22 +49,18 @@ function ButtonInner({
   }, [loading, disabled, onPress]);
 
   const isDisabled = disabled || loading;
-  const bg = bgMap[variant];
-  const labelColor = labelColorMap[variant];
 
   const containerStyle: ViewStyle = {
-    backgroundColor: bg,
+    backgroundColor: bgMap[variant],
     height: heightMap[size],
     paddingHorizontal: paddingMap[size],
-    borderRadius: 14,
+    borderRadius: size === "lg" ? 14 : 10,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     opacity: isDisabled ? 0.5 : 1,
-    ...(variant === "secondary" && {
-      borderWidth: 1,
-      borderColor: colors.border,
-    }),
+    ...(variant === "secondary" && { borderWidth: 1, borderColor: colors.borderLight }),
+    ...(variant === "ghost" && { borderWidth: 1, borderColor: colors.borderLight }),
   };
 
   return (
@@ -92,16 +73,14 @@ function ButtonInner({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
-        <ActivityIndicator color={labelColor} size="small" />
+        <ActivityIndicator color={labelColorMap[variant]} size="small" />
       ) : (
-        <Text style={[fontMap[size], { color: labelColor }]}>{label}</Text>
+        <Text style={[fontMap[size], { color: labelColorMap[variant] }]}>{label}</Text>
       )}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  pressed: { opacity: 0.85 },
-});
+const styles = StyleSheet.create({ pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] } });
 
 export const Button = memo(ButtonInner);

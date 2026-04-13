@@ -1,6 +1,5 @@
 /**
- * BalanceCard — SELF-FETCHING organism. Dark gradient card showing USDC balance.
- * Calls useBalance internally. Drop on any screen and it just works.
+ * BalanceCard — SELF-FETCHING. Dark gradient card with green accent.
  */
 
 import { memo } from "react";
@@ -8,19 +7,23 @@ import { View, Text, StyleSheet } from "react-native";
 import { useBalance } from "../../hooks/useBalance";
 import { useCurrentWallet } from "../../store/authStore";
 import { Skeleton } from "../atoms/Skeleton";
-import { colors, spacing, typography, radii } from "../../theme";
+import { DEMO_WALLET } from "../../lib/demoData";
+import { colors, spacing } from "../../theme";
 
 function BalanceCardInner() {
-  const wallet = useCurrentWallet();
+  const wallet = useCurrentWallet() ?? DEMO_WALLET;
   const { formatted, isLoading } = useBalance(wallet);
 
   if (isLoading) return <BalanceCardSkeleton />;
 
   return (
     <View style={styles.card}>
-      <Text style={styles.label}>USDC Balance</Text>
+      <Text style={styles.label}>USDC BALANCE</Text>
       <Text style={styles.amount}>${formatted}</Text>
-      <Text style={styles.network}>Base Network</Text>
+      <View style={styles.pill}>
+        <View style={styles.pillDot} />
+        <Text style={styles.pillText}>Base Network</Text>
+      </View>
     </View>
   );
 }
@@ -28,27 +31,20 @@ function BalanceCardInner() {
 function BalanceCardSkeleton() {
   return (
     <View style={styles.card}>
-      <Skeleton width={100} height={14} borderRadius={4} />
-      <Skeleton width={160} height={36} borderRadius={6} style={{ marginTop: spacing.s2 }} />
-      <Skeleton width={80} height={12} borderRadius={4} style={{ marginTop: spacing.s2 }} />
+      <Skeleton width={100} height={12} />
+      <Skeleton width={180} height={40} style={{ marginTop: spacing.s2 }} />
+      <Skeleton width={90} height={20} borderRadius={10} style={{ marginTop: spacing.s3 }} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.ink.primary,
-    borderRadius: radii.xl,
-    padding: spacing.s6,
-  },
-  label: { ...typography.caption, color: colors.ink.subtle },
-  amount: { ...typography.displayLarge, color: "#FFFFFF", marginTop: spacing.s1 },
-  network: { ...typography.micro, color: colors.ink.muted, marginTop: spacing.s2 },
+  card: { backgroundColor: colors.bg.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: colors.border },
+  label: { fontSize: 11, fontWeight: "500", color: colors.ink.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 },
+  amount: { fontSize: 36, fontWeight: "800", color: "#FFFFFF", letterSpacing: -1.5 },
+  pill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.bg.glass, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4, marginTop: 12, alignSelf: "flex-start" },
+  pillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.brand.green },
+  pillText: { fontSize: 10, color: colors.ink.muted, fontFamily: "monospace" },
 });
 
-// Attach skeleton as a static property per spec rule.
-BalanceCardInner.Skeleton = BalanceCardSkeleton;
-
-export const BalanceCard = Object.assign(memo(BalanceCardInner), {
-  Skeleton: BalanceCardSkeleton,
-});
+export const BalanceCard = Object.assign(memo(BalanceCardInner), { Skeleton: BalanceCardSkeleton });
