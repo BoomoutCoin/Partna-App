@@ -1,12 +1,11 @@
 /**
- * Sign-in screen — real sign-up flow that creates user in Supabase.
+ * Sign-in screen — real sign-up flow with WalletConnect + Supabase.
  */
 
-import { useState, useCallback, useEffect } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ActivityIndicator } from "react-native";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ActivityIndicator, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { useAccount } from "wagmi";
-import { useWeb3Modal } from "@web3modal/wagmi/react";
+import { useAccount, useConnect } from "wagmi";
 import { useAuthStore } from "../../store/authStore";
 import { useUiStore } from "../../store/uiStore";
 import { demoSignUp } from "../../lib/authService";
@@ -17,14 +16,37 @@ import type { Address } from "@partna/types";
 
 type Screen = "landing" | "signup" | "connecting";
 
+// Lazy-load Web3Modal hook on web only
+function useWeb3ModalLazy() {
+  const openRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    void (async () => {
+      try {
+        const mod = await import("@web3modal/wagmi/react");
+        // Store the open function for later use
+        openRef.current = async () => {
+          const { open } = mod.useWeb3Modal();
+          await open();
+        };
+      } catch {
+        // Web3Modal not available
+      }
+    })();
+  }, []);
+
+  return openRef;
+}
+
 export default function SignIn() {
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   const pushToast = useUiStore((s) => s.pushToast);
   const { address, isConnected } = useAccount();
-  const { open: openWeb3Modal } = useWeb3Modal();
+  const { connectors, connectAsync } = useConnect();
 
-  // When wallet connects via Web3Modal, create user + navigate
+  // When wallet connects, create user + navigate
   useEffect(() => {
     if (isConnected && address) {
       const walletAddr = address.toLowerCase() as Address;
@@ -44,9 +66,25 @@ export default function SignIn() {
     }
   }, [isConnected, address, setSession, pushToast, router]);
 
-  const handleWalletConnect = useCallback(() => {
-    void openWeb3Modal();
-  }, [openWeb3Modal]);
+  const handleWalletConnect = useCallback(async () => {
+    // Try wagmi connectors directly (works on both web + native)
+    try {
+      const wcConnector = connectors.find((c) => c.id === "walletConnect");
+      const injectedConnector = connectors.find((c) => c.id === "injected");
+      const connector = wcConnector ?? injectedConnector;
+
+      if (connector) {
+        await connectAsync({ connector });
+        // useEffect above handles the rest (user creation + navigation)
+        return;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (!msg.includes("rejected") && !msg.includes("User rejected")) {
+        pushToast({ kind: "info", title: "Opening wallet selector..." });
+      }
+    }
+  }, [connectors, connectAsync, pushToast]);
 
   const [screen, setScreen] = useState<Screen>("landing");
   const [name, setName] = useState("");
@@ -229,8 +267,6 @@ const styles = StyleSheet.create({
   demoIcon: { fontSize: 16 },
   demoLabel: { fontSize: 14, fontWeight: "600", color: "#38BDF8" },
   footer: { fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "center", marginTop: 8 },
-
-  // Sign-up screen
   signupContent: { flex: 1, paddingHorizontal: spacing.s6, paddingTop: 20, justifyContent: "space-between" },
   backBtn: { alignSelf: "flex-start", paddingVertical: 8 },
   backText: { fontSize: 14, color: "#38BDF8", fontWeight: "600" },
@@ -239,27 +275,10 @@ const styles = StyleSheet.create({
   signupSub: { fontSize: 14, color: "rgba(255,255,255,0.45)", textAlign: "center" },
   formSection: { gap: 8 },
   inputLabel: { fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.5)", letterSpacing: 0.3 },
-  input: {
-    backgroundColor: colors.bg.elevated,
-    borderWidth: 1.5,
-    borderColor: colors.borderLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  inputActive: { borderColor: colors.brand.green, shadowColor: colors.brand.green, shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
+  input: { backgroundColor: colors.bg.elevated, borderWidth: 1.5, borderColor: colors.borderLight, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
+  inputActive: { borderColor: colors.brand.green },
   inputHelper: { fontSize: 11, color: "rgba(255,255,255,0.3)" },
-  signupBtn: {
-    backgroundColor: colors.brand.green,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
+  signupBtn: { backgroundColor: colors.brand.green, borderRadius: 14, paddingVertical: 16, alignItems: "center", justifyContent: "center", marginTop: 12 },
   signupBtnDisabled: { opacity: 0.4 },
   signupBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   securityRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 24 },

@@ -1,28 +1,32 @@
 /**
  * Provider composition — ORDER MATTERS.
  *
- *   wagmi → React Query → Apollo → Web3Modal → GestureHandler → SafeArea
+ *   wagmi → React Query → Apollo → GestureHandler → SafeArea
  *
- * Web3Modal provides the WalletConnect QR code modal on web.
+ * Web3Modal is initialized lazily on web only via dynamic import
+ * to avoid Metro resolution failures on native.
  */
 
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ApolloProvider } from "@apollo/client";
-import { createWeb3Modal } from "@web3modal/wagmi/react";
 
 import { wagmiConfig } from "./wagmi";
 import { queryClient } from "./queryClient";
 import { apolloClient } from "./graphClient";
 import { env } from "./env";
 
-// Initialize Web3Modal (only on web — native uses WalletConnect's own modal)
-if (Platform.OS === "web" && env.wcProjectId) {
+// Lazy Web3Modal init — dynamic import avoids Metro bundler crash
+let web3ModalInitialized = false;
+async function initWeb3Modal(): Promise<void> {
+  if (web3ModalInitialized || Platform.OS !== "web" || !env.wcProjectId) return;
+  web3ModalInitialized = true;
   try {
+    const { createWeb3Modal } = await import("@web3modal/wagmi/react");
     createWeb3Modal({
       wagmiConfig: wagmiConfig as Parameters<typeof createWeb3Modal>[0]["wagmiConfig"],
       projectId: env.wcProjectId,
@@ -33,7 +37,7 @@ if (Platform.OS === "web" && env.wcProjectId) {
       },
     });
   } catch {
-    // Web3Modal init can fail if already initialized — safe to ignore
+    // Web3Modal not available — wallet connect will work via wagmi connectors directly
   }
 }
 
@@ -42,6 +46,8 @@ interface AppProvidersProps {
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
+  useEffect(() => { void initWeb3Modal(); }, []);
+
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
