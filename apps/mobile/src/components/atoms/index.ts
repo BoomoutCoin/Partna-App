@@ -4,3 +4,4 @@ export { Avatar } from "./Avatar";
 export { Skeleton } from "./Skeleton";
 export { InputField } from "./InputField";
 export { CycleRing } from "./CycleRing";
+export { Logo } from "./Logo";
