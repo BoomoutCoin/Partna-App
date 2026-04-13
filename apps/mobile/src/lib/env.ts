@@ -33,7 +33,9 @@ export const env = {
   // In dev without an explicit chainId, default to Anvil (31337)
   chainId: extra.chainId ?? 31337,
   privyAppId: extra.privyAppId ?? "",
-  wcProjectId: extra.wcProjectId ?? "",
+  // Hardcoded fallback ensures WalletConnect works in static web exports
+  // where Constants.expoConfig.extra may not resolve env vars.
+  wcProjectId: extra.wcProjectId || "a39f9a1b4f84621d56890bf315096211",
   alchemyKey: extra.alchemyKey ?? "",
   poolFactoryAddress: (extra.poolFactoryAddress ?? "") as Address | "",
   usdcAddress: (extra.usdcAddress ?? "0x5FbDB2315678afecb367f032d93F642f64180aa3") as Address,

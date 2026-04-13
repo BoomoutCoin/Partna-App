@@ -1,32 +1,48 @@
 /**
- * Provider composition — ORDER MATTERS per CLAUDE.md.
+ * Provider composition — ORDER MATTERS.
  *
- *   Privy (auth) → wagmi (on-chain) → React Query (server state)
- *        → Apollo (subgraph reads) → GestureHandlerRootView
+ *   wagmi → React Query → Apollo → Web3Modal → GestureHandler → SafeArea
  *
- * Privy is nested as a future-wrap: when `env.privyAppId` is empty (local
- * dev without a Privy app), we skip it so the tree still mounts. The real
- * Privy provider registers in Step 7+ once the account id is provisioned.
+ * Web3Modal provides the WalletConnect QR code modal on web.
  */
 
 import { type ReactNode } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ApolloProvider } from "@apollo/client";
+import { createWeb3Modal } from "@web3modal/wagmi/react";
 
 import { wagmiConfig } from "./wagmi";
 import { queryClient } from "./queryClient";
 import { apolloClient } from "./graphClient";
 import { env } from "./env";
 
+// Initialize Web3Modal (only on web — native uses WalletConnect's own modal)
+if (Platform.OS === "web" && env.wcProjectId) {
+  try {
+    createWeb3Modal({
+      wagmiConfig: wagmiConfig as Parameters<typeof createWeb3Modal>[0]["wagmiConfig"],
+      projectId: env.wcProjectId,
+      themeMode: "dark",
+      themeVariables: {
+        "--w3m-accent": "#16A34A",
+        "--w3m-border-radius-master": "2px",
+      },
+    });
+  } catch {
+    // Web3Modal init can fail if already initialized — safe to ignore
+  }
+}
+
 interface AppProvidersProps {
   children: ReactNode;
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
-  const body = (
+  return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ApolloProvider client={apolloClient}>
@@ -39,11 +55,4 @@ export function AppProviders({ children }: AppProvidersProps) {
       </QueryClientProvider>
     </WagmiProvider>
   );
-
-  // Privy wrap is intentionally deferred — see the docblock above.
-  if (!env.privyAppId) return body;
-
-  // Actual Privy provider wiring lands when @privy-io/expo's provider API
-  // stabilises for SDK 51. Until then, return the inner tree as-is.
-  return body;
 }
