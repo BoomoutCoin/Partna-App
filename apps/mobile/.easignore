@@ -1,0 +1,22 @@
+# EAS build ignores — keep build fast, skip files not needed for native compile
+
+# Other apps in the monorepo (not needed for mobile build)
+../../apps/api
+../../contracts
+../../supabase
+
+# Dev/CI files
+.claude
+*.test.ts
+*.test.tsx
+__tests__
+coverage
+
+# Build artifacts
+dist
+.expo
+web-build
+
+# IDE
+.vscode
+.idea
