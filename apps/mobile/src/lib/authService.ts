@@ -1,95 +1,102 @@
 /**
- * Auth service — handles sign-up/sign-in flow against the real API.
+ * Auth + pool service — Supabase REST calls for sign-up and pool creation.
  *
- * On web demo mode: generates a random wallet identity, calls the API
- * nonce + wallet-auth endpoints to create a real user in Supabase,
- * and returns a real JWT session.
+ * Uses the ANON key only (safe for client bundles). The service_role key
+ * NEVER ships in the mobile app — it stays server-side in apps/api/.env.
  *
- * Falls back to local demo if the API is unreachable.
+ * For demo mode (no real wallet), we use Supabase's PostgREST with the
+ * anon key. RLS policies allow inserts where the caller provides their
+ * own wallet_address. For production, all writes go through apps/api.
  */
 
 import type { User, Address } from "@partna/types";
 import { DEMO_USER } from "./demoData";
 
 const API_BASE = "https://jentqryenqqylgiojdnt.supabase.co";
-const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbnRxcnllbnFxeWxnaW9qZG50Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjA3NTg5OSwiZXhwIjoyMDkxNjUxODk5fQ.h19vbqFkZmC2RbOrt_Y7FMOhkUq_7Dhc9FXKw-02uqA";
-const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbnRxcnllbnFxeWxnaW9qZG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzU4OTksImV4cCI6MjA5MTY1MTg5OX0.CNU11dtcx78SDJPvk_Q0o9bMlP3rxhHz0dJlMAXWRD0";
+const ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbnRxcnllbnFxeWxnaW9qZG50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzU4OTksImV4cCI6MjA5MTY1MTg5OX0.CNU11dtcx78SDJPvk_Q0o9bMlP3rxhHz0dJlMAXWRD0";
+
+const headers = {
+  "Content-Type": "application/json",
+  apikey: ANON_KEY,
+  Authorization: `Bearer ${ANON_KEY}`,
+};
 
 interface AuthResult {
   user: User;
   jwt: string;
 }
 
+function safeParseDateToUnix(raw: unknown): number {
+  if (typeof raw === "string" && raw.length > 0) {
+    const ms = new Date(raw).getTime();
+    if (!Number.isNaN(ms)) return Math.floor(ms / 1000);
+  }
+  return Math.floor(Date.now() / 1000);
+}
+
 /**
- * Demo sign-up: creates a real user row in Supabase via the service role,
- * then returns a session the app can use.
+ * Sign up: create user row in Supabase, return session.
  */
 export async function demoSignUp(displayName: string): Promise<AuthResult> {
-  // Generate a pseudo-random wallet address for this demo user
-  const walletAddress = generateDemoWallet(displayName);
+  const trimmed = displayName.trim();
+  if (trimmed.length < 2) {
+    return {
+      user: { ...DEMO_USER, displayName: trimmed || "Guest" },
+      jwt: "demo-jwt-token",
+    };
+  }
+
+  const walletAddress = generateDemoWallet(trimmed);
 
   try {
-    // Try to upsert user directly in Supabase (service role not available on client,
-    // but for demo we'll use the anon key with a simple insert-if-not-exists pattern)
-    const res = await fetch(`${API_BASE}/rest/v1/users`, {
+    // Upsert user (merge on conflict)
+    await fetch(`${API_BASE}/rest/v1/users`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": ANON_KEY,
-        "Authorization": `Bearer ${SERVICE_KEY}`,
-        "Prefer": "resolution=merge-duplicates",
-      },
+      headers: { ...headers, Prefer: "resolution=merge-duplicates" },
       body: JSON.stringify({
         wallet_address: walletAddress,
-        display_name: displayName,
+        display_name: trimmed,
         on_time_rate: 0,
         is_pro: false,
       }),
     });
 
-    if (res.ok || res.status === 201 || res.status === 409) {
-      // Fetch the user back
-      const userRes = await fetch(
-        `${API_BASE}/rest/v1/users?wallet_address=eq.${walletAddress}&select=*`,
-        {
-          headers: {
-            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbnRxcnllbnFxeWxnaW9qZG50Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjA3NTg5OSwiZXhwIjoyMDkxNjUxODk5fQ.h19vbqFkZmC2RbOrt_Y7FMOhkUq_7Dhc9FXKw-02uqA",
-            "Authorization": `Bearer ${SERVICE_KEY}`,
-          },
-        },
-      );
+    // Fetch user back to confirm
+    const userRes = await fetch(
+      `${API_BASE}/rest/v1/users?wallet_address=eq.${walletAddress}&select=*&limit=1`,
+      { headers },
+    );
 
-      if (userRes.ok) {
-        const rows = await userRes.json() as Array<Record<string, unknown>>;
-        if (rows.length > 0) {
-          const row = rows[0]!;
-          return {
-            user: {
-              walletAddress: row.wallet_address as Address,
-              displayName: (row.display_name as string) ?? displayName,
-              avatarUrl: null,
-              onTimeRate: (row.on_time_rate as number) ?? 0,
-              isPro: (row.is_pro as boolean) ?? false,
-              createdAt: Math.floor(new Date(row.created_at as string).getTime() / 1000),
-            },
-            jwt: "supabase-session-demo",
-          };
-        }
+    if (userRes.ok) {
+      const rows = (await userRes.json()) as Array<Record<string, unknown>>;
+      if (rows[0]) {
+        const r = rows[0];
+        return {
+          user: {
+            walletAddress: (r.wallet_address as string) as Address,
+            displayName: (r.display_name as string) ?? trimmed,
+            avatarUrl: null,
+            onTimeRate: (r.on_time_rate as number) ?? 0,
+            isPro: (r.is_pro as boolean) ?? false,
+            createdAt: safeParseDateToUnix(r.created_at),
+          },
+          jwt: "supabase-session",
+        };
       }
     }
   } catch {
-    // API unreachable — fall back to local demo
+    // Network error — fall back to local demo
   }
 
-  // Fallback: local demo user
   return {
-    user: { ...DEMO_USER, displayName, walletAddress: walletAddress as Address },
+    user: { ...DEMO_USER, displayName: trimmed, walletAddress: walletAddress as Address },
     jwt: "demo-jwt-token",
   };
 }
 
 /**
- * Create a pool in Supabase pool_metadata table.
+ * Create pool metadata in Supabase.
  */
 export async function createPoolInDb(params: {
   displayName: string;
@@ -99,18 +106,12 @@ export async function createPoolInDb(params: {
   isPrivate: boolean;
   organiserAddress: string;
 }): Promise<{ poolAddress: string; success: boolean }> {
-  // Generate a fake contract address for the demo pool
   const poolAddress = generateDemoWallet(params.displayName + Date.now());
 
   try {
     const res = await fetch(`${API_BASE}/rest/v1/pool_metadata`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbnRxcnllbnFxeWxnaW9qZG50Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjA3NTg5OSwiZXhwIjoyMDkxNjUxODk5fQ.h19vbqFkZmC2RbOrt_Y7FMOhkUq_7Dhc9FXKw-02uqA",
-        "Authorization": `Bearer ${SERVICE_KEY}`,
-        "Prefer": "return=representation",
-      },
+      headers: { ...headers, Prefer: "return=representation" },
       body: JSON.stringify({
         contract_address: poolAddress,
         display_name: params.displayName,
@@ -127,27 +128,35 @@ export async function createPoolInDb(params: {
 }
 
 /**
- * Fetch pools created by a user from Supabase.
+ * Fetch pools by organiser.
  */
-export async function fetchUserPools(organiserAddress: string): Promise<Array<{
-  contract_address: string;
-  display_name: string;
-  description: string;
-  is_private: boolean;
-  created_at: string;
-}>> {
+export async function fetchUserPools(
+  organiserAddress: string,
+): Promise<
+  Array<{
+    contract_address: string;
+    display_name: string;
+    description: string;
+    is_private: boolean;
+    created_at: string;
+  }>
+> {
   try {
     const res = await fetch(
       `${API_BASE}/rest/v1/pool_metadata?organiser_address=eq.${organiserAddress}&select=*&order=created_at.desc`,
-      {
-        headers: {
-          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbnRxcnllbnFxeWxnaW9qZG50Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjA3NTg5OSwiZXhwIjoyMDkxNjUxODk5fQ.h19vbqFkZmC2RbOrt_Y7FMOhkUq_7Dhc9FXKw-02uqA",
-          "Authorization": `Bearer ${SERVICE_KEY}`,
-        },
-      },
+      { headers },
     );
-    if (res.ok) return await res.json() as Array<Record<string, unknown>> as any;
-  } catch { /* fallback below */ }
+    if (res.ok)
+      return (await res.json()) as Array<{
+        contract_address: string;
+        display_name: string;
+        description: string;
+        is_private: boolean;
+        created_at: string;
+      }>;
+  } catch {
+    /* fallback */
+  }
   return [];
 }
 

@@ -78,7 +78,7 @@ export default function JoinByInvite() {
 
         <Button
           label="Join this pool"
-          onPress={() => router.push(`/pools/${preview.poolContractAddress}`)}
+          onPress={() => router.replace(`/(app)/pools/${preview.poolContractAddress}`)}
           size="lg"
         />
         <Button

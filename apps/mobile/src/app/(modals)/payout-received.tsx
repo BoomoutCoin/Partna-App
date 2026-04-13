@@ -70,7 +70,7 @@ export default function PayoutReceived() {
           <Button label="Share" onPress={handleShare} variant="secondary" size="md" />
           <Button
             label="Back to pool →"
-            onPress={() => router.replace(`/(app)/pools/${params.poolId}`)}
+            onPress={() => params.poolId ? router.replace(`/(app)/pools/${params.poolId}`) : router.replace("/(app)")}
             size="lg"
           />
         </View>

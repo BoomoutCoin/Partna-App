@@ -94,14 +94,24 @@ export default function PayNow() {
           </View>
         )}
 
+        {step === "error" && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>Something went wrong. Your balance is unchanged.</Text>
+          </View>
+        )}
+
         <View style={styles.bottom}>
-          <Button
-            label={stepLabels[step]}
-            onPress={execute}
-            size="lg"
-            loading={isProcessing}
-            disabled={step === "success"}
-          />
+          {step === "error" ? (
+            <Button label="Try again" onPress={() => { setStep("idle"); }} size="lg" />
+          ) : (
+            <Button
+              label={stepLabels[step]}
+              onPress={execute}
+              size="lg"
+              loading={isProcessing}
+              disabled={step === "success"}
+            />
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -123,5 +133,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   successText: { ...typography.bodyMedium, color: colors.status.paid.text },
+  errorBox: {
+    backgroundColor: colors.status.due.bg,
+    padding: spacing.s4,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  errorText: { ...typography.bodyMedium, color: colors.status.due.text },
   bottom: { paddingTop: spacing.s4 },
 });

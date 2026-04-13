@@ -44,10 +44,16 @@ export default function CreatePool() {
   const interval = INTERVALS[intervalIdx]!;
 
   const deploy = useCallback(async () => {
+    // Validation guard
+    if (name.trim().length < 2) { pushToast({ kind: "warning", title: "Pool name must be at least 2 characters" }); return; }
+    if (amountNum < 10 || amountNum > 10000) { pushToast({ kind: "warning", title: "Contribution must be $10–$10,000" }); return; }
+    if (membersNum < 3 || membersNum > 20) { pushToast({ kind: "warning", title: "Members must be 3–20" }); return; }
+    if (totalTvl > 50000) { pushToast({ kind: "warning", title: "TVL exceeds $50k cap" }); return; }
+
     setDeploying(true);
     try {
       const result = await createPoolInDb({
-        displayName: name,
+        displayName: name.trim(),
         contribution: amountStr,
         numMembers: membersNum,
         interval: interval.label,
