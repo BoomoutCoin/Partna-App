@@ -130,7 +130,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ? "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" // Base mainnet
         : "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia
       eas: {
-        projectId: process.env.EAS_PROJECT_ID ?? "",
+        projectId: process.env.EAS_PROJECT_ID || "ec6e5618-a5f9-47dd-911a-6fa0f327c2fb",
       },
     },
   };
