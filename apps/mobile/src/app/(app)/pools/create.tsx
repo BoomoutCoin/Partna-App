@@ -66,10 +66,10 @@ export default function CreatePool() {
         setDeployed(true);
         pushToast({ kind: "success", title: "Pool created!" });
       } else {
-        pushToast({ kind: "error", title: "Pool creation failed" });
+        pushToast({ kind: "error", title: result.error ?? "Pool creation failed" });
       }
-    } catch {
-      pushToast({ kind: "error", title: "Network error" });
+    } catch (err) {
+      pushToast({ kind: "error", title: err instanceof Error ? err.message : "Network error" });
     } finally {
       setDeploying(false);
     }

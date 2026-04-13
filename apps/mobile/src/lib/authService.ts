@@ -105,10 +105,22 @@ export async function createPoolInDb(params: {
   interval: string;
   isPrivate: boolean;
   organiserAddress: string;
-}): Promise<{ poolAddress: string; success: boolean }> {
+}): Promise<{ poolAddress: string; success: boolean; error?: string }> {
   const poolAddress = generateDemoWallet(params.displayName + Date.now());
 
   try {
+    // Ensure organiser user exists first (FK constraint)
+    await fetch(`${API_BASE}/rest/v1/users`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({
+        wallet_address: params.organiserAddress,
+        display_name: "Pool Creator",
+        on_time_rate: 0,
+        is_pro: false,
+      }),
+    });
+
     const res = await fetch(`${API_BASE}/rest/v1/pool_metadata`, {
       method: "POST",
       headers: { ...headers, Prefer: "return=representation" },
@@ -121,9 +133,16 @@ export async function createPoolInDb(params: {
       }),
     });
 
-    return { poolAddress, success: res.ok || res.status === 201 };
-  } catch {
-    return { poolAddress, success: false };
+    if (res.ok || res.status === 201) {
+      return { poolAddress, success: true };
+    }
+
+    // Parse error
+    const body = await res.json().catch(() => ({ message: "Unknown error" })) as Record<string, unknown>;
+    const errMsg = (body.message as string) ?? `HTTP ${res.status}`;
+    return { poolAddress, success: false, error: errMsg };
+  } catch (err) {
+    return { poolAddress, success: false, error: err instanceof Error ? err.message : "Network error" };
   }
 }
 
