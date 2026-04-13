@@ -2,6 +2,7 @@
  * usePool(poolId) + useMyPools(address) — Apollo subgraph + demo fallback.
  */
 
+import { useState, useEffect } from "react";
 import { Platform } from "react-native";
 import { useQuery as useApolloQuery } from "@apollo/client";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import type { SubgraphPool, PoolQueryResult, MyPoolsQueryResult } from "@partna/
 import { GET_POOL, GET_MY_POOLS } from "../lib/graphClient";
 import { api } from "../lib/api";
 import { DEMO_POOLS, getDemoPool } from "../lib/demoData";
+import { fetchUserPools } from "../lib/authService";
 
 // ---------- Transform subgraph → domain ----------
 
@@ -84,9 +86,34 @@ export function usePool(poolId: Address) {
 }
 
 export function useMyPools(address: Address | null) {
-  // Demo mode on web
+  // On web: merge demo pools + any pools created in Supabase
   if (Platform.OS === "web") {
-    return { pools: DEMO_POOLS, isLoading: false };
+    const [userPools, setUserPools] = useState<Pool[]>([]);
+    useEffect(() => {
+      if (!address) return;
+      void fetchUserPools(address).then((rows) => {
+        const mapped: Pool[] = rows.map((r) => ({
+          address: r.contract_address as Address,
+          displayName: r.display_name,
+          organiser: address,
+          status: "FILLING" as PoolStatus,
+          contribution: 100_000000n,
+          depositAmount: 200_000000n,
+          numMembers: 5,
+          intervalSeconds: 604800,
+          currentCycle: 0,
+          cycleDeadline: 0,
+          currentPot: 0n,
+          totalContributed: 0n,
+          feeBps: 50,
+          members: [],
+          isPrivate: r.is_private,
+          createdAt: Math.floor(new Date(r.created_at).getTime() / 1000),
+        }));
+        setUserPools(mapped);
+      });
+    }, [address]);
+    return { pools: [...DEMO_POOLS, ...userPools], isLoading: false };
   }
 
   const { data: gqlData, loading: gqlLoading } = useApolloQuery<MyPoolsQueryResult>(

@@ -1,11 +1,11 @@
 /**
- * Sign-in screen — real sign-up flow with WalletConnect + Supabase.
+ * Sign-in screen — sign-up + WalletConnect. Sign-out safe (no auto-reconnect).
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ActivityIndicator, Platform } from "react-native";
+import { useState, useCallback } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { useAccount, useConnect } from "wagmi";
+import { useConnect } from "wagmi";
 import { useAuthStore } from "../../store/authStore";
 import { useUiStore } from "../../store/uiStore";
 import { demoSignUp } from "../../lib/authService";
@@ -16,75 +16,44 @@ import type { Address } from "@partna/types";
 
 type Screen = "landing" | "signup" | "connecting";
 
-// Lazy-load Web3Modal hook on web only
-function useWeb3ModalLazy() {
-  const openRef = useRef<(() => Promise<void>) | null>(null);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-    void (async () => {
-      try {
-        const mod = await import("@web3modal/wagmi/react");
-        // Store the open function for later use
-        openRef.current = async () => {
-          const { open } = mod.useWeb3Modal();
-          await open();
-        };
-      } catch {
-        // Web3Modal not available
-      }
-    })();
-  }, []);
-
-  return openRef;
-}
-
 export default function SignIn() {
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   const pushToast = useUiStore((s) => s.pushToast);
-  const { address, isConnected } = useAccount();
   const { connectors, connectAsync } = useConnect();
 
-  // When wallet connects, create user + navigate
-  useEffect(() => {
-    if (isConnected && address) {
-      const walletAddr = address.toLowerCase() as Address;
-      void (async () => {
-        try {
-          const authResult = await demoSignUp(walletAddr.slice(0, 8));
-          setSession({
-            user: { ...authResult.user, walletAddress: walletAddr },
-            jwt: authResult.jwt,
-          });
-          pushToast({ kind: "success", title: "Wallet connected!" });
-          router.replace("/(app)");
-        } catch {
-          pushToast({ kind: "error", title: "Sign-up failed after wallet connect" });
-        }
-      })();
-    }
-  }, [isConnected, address, setSession, pushToast, router]);
-
   const handleWalletConnect = useCallback(async () => {
-    // Try wagmi connectors directly (works on both web + native)
+    setScreen("connecting");
     try {
       const wcConnector = connectors.find((c) => c.id === "walletConnect");
       const injectedConnector = connectors.find((c) => c.id === "injected");
       const connector = wcConnector ?? injectedConnector;
 
-      if (connector) {
-        await connectAsync({ connector });
-        // useEffect above handles the rest (user creation + navigation)
+      if (!connector) {
+        pushToast({ kind: "error", title: "No wallet connector available" });
+        setScreen("landing");
         return;
       }
+
+      const result = await connectAsync({ connector });
+      const walletAddr = (result.accounts[0] ?? "0x0").toLowerCase() as Address;
+
+      // Wallet connected — create user in Supabase
+      const authResult = await demoSignUp(walletAddr.slice(0, 8));
+      setSession({
+        user: { ...authResult.user, walletAddress: walletAddr },
+        jwt: authResult.jwt,
+      });
+      pushToast({ kind: "success", title: "Wallet connected!" });
+      router.replace("/(app)");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (!msg.includes("rejected") && !msg.includes("User rejected")) {
-        pushToast({ kind: "info", title: "Opening wallet selector..." });
+        pushToast({ kind: "error", title: msg.slice(0, 60) || "Connection failed" });
       }
+      setScreen("landing");
     }
-  }, [connectors, connectAsync, pushToast]);
+  }, [connectors, connectAsync, setSession, pushToast, router]);
 
   const [screen, setScreen] = useState<Screen>("landing");
   const [name, setName] = useState("");
@@ -132,13 +101,11 @@ export default function SignIn() {
           <Pressable onPress={() => setScreen("landing")} style={styles.backBtn}>
             <Text style={styles.backText}>{"\u2190"} Back</Text>
           </Pressable>
-
           <View style={styles.signupHero}>
             <Logo size="md" showText={false} />
             <Text style={styles.signupTitle}>Create your account</Text>
             <Text style={styles.signupSub}>Enter your name to get started with PartNA Wallet</Text>
           </View>
-
           <View style={styles.formSection}>
             <Text style={styles.inputLabel}>Display name</Text>
             <TextInput
@@ -153,7 +120,6 @@ export default function SignIn() {
               onSubmitEditing={handleSignUp}
             />
             <Text style={styles.inputHelper}>This is how other pool members will see you</Text>
-
             <Pressable
               style={[styles.signupBtn, (!name.trim() || loading) && styles.signupBtnDisabled]}
               onPress={handleSignUp}
@@ -166,7 +132,6 @@ export default function SignIn() {
               )}
             </Pressable>
           </View>
-
           <View style={styles.securityRow}>
             <Text style={styles.securityIcon}>{"\u{1F512}"}</Text>
             <Text style={styles.securityText}>Your account is secured on Base blockchain. No passwords to remember.</Text>
@@ -182,58 +147,28 @@ export default function SignIn() {
       <View style={styles.content}>
         <View style={styles.hero}>
           <Logo size="lg" showText showTagline />
-          <Text style={styles.tagline}>
-            Save together. Build wealth.{"\n"}On-chain rotating savings circles.
-          </Text>
+          <Text style={styles.tagline}>Save together. Build wealth.{"\n"}On-chain rotating savings circles.</Text>
           <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>90%+</Text>
-              <Text style={styles.statLabel}>On-time rate</Text>
-            </View>
+            <View style={styles.stat}><Text style={styles.statNum}>90%+</Text><Text style={styles.statLabel}>On-time rate</Text></View>
             <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>$0.01</Text>
-              <Text style={styles.statLabel}>Gas per tx</Text>
-            </View>
+            <View style={styles.stat}><Text style={styles.statNum}>$0.01</Text><Text style={styles.statLabel}>Gas per tx</Text></View>
             <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>Base</Text>
-              <Text style={styles.statLabel}>Network</Text>
-            </View>
+            <View style={styles.stat}><Text style={styles.statNum}>Base</Text><Text style={styles.statLabel}>Network</Text></View>
           </View>
         </View>
-
         <View style={styles.bottom}>
-          <Pressable
-            style={({ pressed }) => [styles.button, styles.primary, pressed && styles.pressed]}
-            onPress={() => setScreen("signup")}
-          >
+          <Pressable style={({ pressed }) => [styles.button, styles.primary, pressed && styles.pressed]} onPress={() => setScreen("signup")}>
             <Text style={styles.primaryIcon}>{"\u2709"}</Text>
-            <View>
-              <Text style={styles.primaryLabel}>Get started</Text>
-              <Text style={styles.primarySub}>Create your savings wallet</Text>
-            </View>
+            <View><Text style={styles.primaryLabel}>Get started</Text><Text style={styles.primarySub}>Create your savings wallet</Text></View>
           </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.button, styles.secondary, pressed && styles.pressed]}
-            onPress={handleWalletConnect}
-          >
+          <Pressable style={({ pressed }) => [styles.button, styles.secondary, pressed && styles.pressed]} onPress={handleWalletConnect}>
             <Text style={styles.secondaryIcon}>{"\u{1F4B3}"}</Text>
-            <View>
-              <Text style={styles.secondaryLabel}>Connect wallet</Text>
-              <Text style={styles.secondarySub}>MetaMask, Coinbase, Rainbow</Text>
-            </View>
+            <View><Text style={styles.secondaryLabel}>Connect wallet</Text><Text style={styles.secondarySub}>MetaMask, Coinbase, Rainbow</Text></View>
           </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.button, styles.demo, pressed && styles.pressed]}
-            onPress={handleQuickDemo}
-          >
+          <Pressable style={({ pressed }) => [styles.button, styles.demo, pressed && styles.pressed]} onPress={handleQuickDemo}>
             <Text style={styles.demoIcon}>{"\u{1F50D}"}</Text>
             <Text style={styles.demoLabel}>Quick demo (skip sign-up)</Text>
           </Pressable>
-
           <Text style={styles.footer}>By continuing you agree to our Terms and Privacy Policy</Text>
         </View>
       </View>
