@@ -20,11 +20,17 @@ export default function PoolDetail() {
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <Button
+          label="\u2190 Back"
+          onPress={() => router.back()}
+          variant="ghost"
+          size="sm"
+        />
         <PoolHeader poolId={id} />
         <MemberList poolId={id} />
         <Button
           label="Pay now"
-          onPress={() => router.push(`/pay/${id}`)}
+          onPress={() => router.push(`/(modals)/pay/${id}`)}
           size="lg"
         />
       </ScrollView>

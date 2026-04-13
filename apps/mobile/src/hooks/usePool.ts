@@ -1,11 +1,8 @@
 /**
- * usePool(poolId) + useMyPools(address) — Apollo subgraph + React Query merge.
- *
- * Apollo Client fetches the on-chain data from The Graph subgraph.
- * Display metadata (pool name, member display names) is fetched from the
- * Fastify API via React Query.
+ * usePool(poolId) + useMyPools(address) — Apollo subgraph + demo fallback.
  */
 
+import { Platform } from "react-native";
 import { useQuery as useApolloQuery } from "@apollo/client";
 import { useQuery } from "@tanstack/react-query";
 import type { Address, Pool, PoolMember, PoolStatus, MemberStatus } from "@partna/types";
@@ -13,6 +10,7 @@ import type { SubgraphPool, PoolQueryResult, MyPoolsQueryResult } from "@partna/
 
 import { GET_POOL, GET_MY_POOLS } from "../lib/graphClient";
 import { api } from "../lib/api";
+import { DEMO_POOLS, getDemoPool } from "../lib/demoData";
 
 // ---------- Transform subgraph → domain ----------
 
@@ -60,6 +58,12 @@ function deriveMemberStatus(m: {
 // ---------- Hooks ----------
 
 export function usePool(poolId: Address) {
+  // Demo mode on web
+  if (Platform.OS === "web") {
+    const pool = getDemoPool(poolId);
+    return { pool, isLoading: false };
+  }
+
   const { data: gqlData, loading: gqlLoading } = useApolloQuery<PoolQueryResult>(GET_POOL, {
     variables: { id: poolId.toLowerCase() },
     pollInterval: 15_000,
@@ -80,6 +84,11 @@ export function usePool(poolId: Address) {
 }
 
 export function useMyPools(address: Address | null) {
+  // Demo mode on web
+  if (Platform.OS === "web") {
+    return { pools: DEMO_POOLS, isLoading: false };
+  }
+
   const { data: gqlData, loading: gqlLoading } = useApolloQuery<MyPoolsQueryResult>(
     GET_MY_POOLS,
     {

@@ -17,6 +17,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { AppProviders } from "../lib/providers";
 import { useAuthStore, useIsAuthenticated } from "../store/authStore";
+import { ToastContainer } from "../components/molecules/Toast";
 import { colors } from "../theme";
 
 // Keep splash up until SecureStore hydration finishes.
@@ -82,6 +83,7 @@ export default function RootLayout() {
           />
         </Stack>
       </AuthGate>
+      <ToastContainer />
     </AppProviders>
   );
 }
