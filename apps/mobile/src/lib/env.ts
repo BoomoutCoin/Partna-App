@@ -25,15 +25,6 @@ interface Extra {
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Partial<Extra>;
 
-function required<T>(value: T | undefined, key: string): T {
-  if (value === undefined || value === null || value === "") {
-    throw new Error(
-      `[env] Missing required Expo extra value: ${key}. ` +
-        `Check app.config.ts and your .env file.`,
-    );
-  }
-  return value;
-}
 
 export const env = {
   profile: (extra.profile ?? "development") as Profile,

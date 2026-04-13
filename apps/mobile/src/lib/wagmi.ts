@@ -44,8 +44,9 @@ export const ADDRESSES: Record<number, ChainAddresses> = {
 /** Resolve the current chain's addresses based on the APP_ENV profile. */
 export function currentAddresses(): ChainAddresses {
   // In dev, prefer Anvil (31337) if available
-  if (env.profile === "development" && ADDRESSES[foundry.id]) {
-    return ADDRESSES[foundry.id];
+  const anvilAddrs = ADDRESSES[foundry.id];
+  if (env.profile === "development" && anvilAddrs) {
+    return anvilAddrs;
   }
   const a = ADDRESSES[env.chainId];
   if (!a) throw new Error(`[wagmi] No addresses for chainId ${env.chainId}`);

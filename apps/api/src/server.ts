@@ -21,6 +21,7 @@ import { webhookRoutes } from "./routes/webhooks.js";
 import { notificationRoutes } from "./routes/notifications.js";
 import { inviteRoutes } from "./routes/invites.js";
 import { subscriptionRoutes } from "./routes/subscriptions.js";
+import { poolRoutes } from "./routes/pools.js";
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -76,6 +77,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(notificationRoutes);
   await app.register(inviteRoutes);
   await app.register(subscriptionRoutes);
+  await app.register(poolRoutes);
 
   // ---------- Not-found handler ----------
   app.setNotFoundHandler((request, reply) => {
