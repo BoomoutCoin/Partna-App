@@ -1,5 +1,5 @@
 /**
- * MemberRow — Avatar + name + truncated address + status badge.
+ * MemberRow — dark-mode, clean spacing, monospace address.
  */
 
 import { memo } from "react";
@@ -7,14 +7,12 @@ import { View, Text, StyleSheet } from "react-native";
 import type { PoolMember } from "@partna/types";
 import { Avatar } from "../atoms/Avatar";
 import { StatusBadge } from "../atoms/StatusBadge";
-import { colors, spacing, typography, type StatusKey } from "../../theme";
+import { colors, type StatusKey } from "../../theme";
 
-interface MemberRowProps {
-  member: PoolMember;
-}
+interface MemberRowProps { member: PoolMember; }
 
 function truncate(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  return `${addr.slice(0, 6)}\u2026${addr.slice(-4)}`;
 }
 
 function MemberRowInner({ member }: MemberRowProps) {
@@ -30,9 +28,7 @@ function MemberRowInner({ member }: MemberRowProps) {
         <Text style={styles.name} numberOfLines={1}>
           {member.displayName ?? truncate(member.address)}
         </Text>
-        {member.displayName && (
-          <Text style={styles.addr}>{truncate(member.address)}</Text>
-        )}
+        <Text style={styles.addr}>{truncate(member.address)}</Text>
       </View>
       <StatusBadge status={member.status as StatusKey} />
     </View>
@@ -40,10 +36,20 @@ function MemberRowInner({ member }: MemberRowProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.s3, paddingVertical: spacing.s2 },
-  info: { flex: 1 },
-  name: { ...typography.bodyMedium, color: colors.ink.primary },
-  addr: { ...typography.micro, color: colors.ink.muted },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.bg.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  info: { flex: 1, minWidth: 0 },
+  name: { fontSize: 13, fontWeight: "600", color: colors.ink.primary },
+  addr: { fontSize: 10, color: colors.ink.subtle, fontFamily: "monospace", marginTop: 1 },
 });
 
 export const MemberRow = memo(MemberRowInner);

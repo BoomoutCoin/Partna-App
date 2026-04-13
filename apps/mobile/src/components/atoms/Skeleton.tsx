@@ -1,6 +1,5 @@
 /**
- * Skeleton — shimmer placeholder for async components.
- * Uses Reanimated 3 for a UI-thread shimmer animation.
+ * Skeleton — shimmer placeholder, dark-mode adapted.
  */
 
 import { memo, useEffect } from "react";
@@ -17,16 +16,16 @@ import { colors, radii } from "../../theme";
 interface SkeletonProps {
   width: number | `${number}%`;
   height: number;
-  borderRadius?: number;
-  style?: ViewStyle;
+  borderRadius?: number | undefined;
+  style?: ViewStyle | undefined;
 }
 
 function SkeletonInner({ width, height, borderRadius = radii.md, style }: SkeletonProps) {
-  const opacity = useSharedValue(0.4);
+  const opacity = useSharedValue(0.3);
 
   useEffect(() => {
     opacity.value = withRepeat(
-      withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+      withTiming(0.7, { duration: 900, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
@@ -36,7 +35,9 @@ function SkeletonInner({ width, height, borderRadius = radii.md, style }: Skelet
 
   return (
     <View style={[{ width, height, borderRadius, overflow: "hidden" }, style]}>
-      <Animated.View style={[styles.inner, animStyle, { borderRadius }]} />
+      <Animated.View
+        style={[styles.inner, animStyle, { borderRadius }]}
+      />
     </View>
   );
 }

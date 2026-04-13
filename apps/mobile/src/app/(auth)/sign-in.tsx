@@ -2,22 +2,60 @@
  * Sign-in screen — real sign-up flow that creates user in Supabase.
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, SafeAreaView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
+import { useConnect } from "wagmi";
 import { useAuthStore } from "../../store/authStore";
 import { useUiStore } from "../../store/uiStore";
 import { demoSignUp } from "../../lib/authService";
-import { DEMO_USER } from "../../lib/demoData";
+import { DEMO_USER, DEMO_WALLET } from "../../lib/demoData";
 import { Logo } from "../../components/atoms/Logo";
 import { colors, spacing } from "../../theme";
+import type { Address } from "@partna/types";
 
-type Screen = "landing" | "signup";
+type Screen = "landing" | "signup" | "connecting";
 
 export default function SignIn() {
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   const pushToast = useUiStore((s) => s.pushToast);
+  const { connectors, connectAsync } = useConnect();
+  
+
+  const handleWalletConnect = useCallback(async () => {
+    setScreen("connecting");
+    try {
+      // Try WalletConnect first (shows QR modal), then injected
+      const wcConnector = connectors.find((c) => c.id === "walletConnect");
+      const injectedConnector = connectors.find((c) => c.id === "injected");
+      const connector = wcConnector ?? injectedConnector;
+
+      if (!connector) {
+        pushToast({ kind: "error", title: "No wallet connector available" });
+        setScreen("landing");
+        return;
+      }
+
+      const result = await connectAsync({ connector });
+      const walletAddr = (result.accounts[0] ?? DEMO_WALLET) as Address;
+
+      // Create/upsert user in Supabase with the real wallet address
+      const authResult = await demoSignUp(walletAddr.slice(0, 8));
+      setSession({
+        user: { ...authResult.user, walletAddress: walletAddr },
+        jwt: authResult.jwt,
+      });
+      pushToast({ kind: "success", title: "Wallet connected!" });
+      router.replace("/(app)");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Connection failed";
+      if (!msg.includes("rejected")) {
+        pushToast({ kind: "error", title: msg.slice(0, 60) });
+      }
+      setScreen("landing");
+    }
+  }, [connectors, connectAsync, setSession, pushToast, router]);
   const [screen, setScreen] = useState<Screen>("landing");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +79,21 @@ export default function SignIn() {
     setSession({ user: DEMO_USER, jwt: "demo-jwt-token" });
     router.replace("/(app)");
   };
+
+  if (screen === "connecting") {
+    return (
+      <SafeAreaView style={styles.root}>
+        <View style={[styles.signupContent, { justifyContent: "center", alignItems: "center", gap: 16 }]}>
+          <ActivityIndicator color={colors.brand.greenLight} size="large" />
+          <Text style={styles.signupTitle}>Connecting wallet...</Text>
+          <Text style={styles.signupSub}>Approve the connection in your wallet app</Text>
+          <Pressable onPress={() => setScreen("landing")} style={{ marginTop: 20 }}>
+            <Text style={styles.backText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (screen === "signup") {
     return (
@@ -134,7 +187,7 @@ export default function SignIn() {
 
           <Pressable
             style={({ pressed }) => [styles.button, styles.secondary, pressed && styles.pressed]}
-            onPress={() => setScreen("signup")}
+            onPress={handleWalletConnect}
           >
             <Text style={styles.secondaryIcon}>{"\u{1F4B3}"}</Text>
             <View>

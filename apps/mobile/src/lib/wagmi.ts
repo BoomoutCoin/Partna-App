@@ -1,15 +1,11 @@
 /**
- * wagmi v2 + viem config.
- *
- * Chains: Base mainnet + Base Sepolia + local Anvil (dev).
- * The ADDRESSES registry is the ONLY place contract addresses live; never
- * hardcode them in components.
+ * wagmi v2 + viem config with WalletConnect connector.
  */
 
 import { createConfig, http } from "wagmi";
 import { base, baseSepolia, foundry } from "wagmi/chains";
+import { walletConnect, injected, coinbaseWallet } from "wagmi/connectors";
 import type { Address } from "@partna/types";
-
 import { env } from "./env";
 
 // ---------- Address registry ----------
@@ -34,26 +30,21 @@ export const ADDRESSES: Record<number, ChainAddresses> = {
         ? (env.poolFactoryAddress as Address)
         : null,
   },
-  // Local Anvil testnet — addresses from DeployLocal.s.sol
   [foundry.id]: {
     usdc: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     poolFactory: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
   },
 };
 
-/** Resolve the current chain's addresses based on the APP_ENV profile. */
 export function currentAddresses(): ChainAddresses {
-  // In dev, prefer Anvil (31337) if available
   const anvilAddrs = ADDRESSES[foundry.id];
-  if (env.profile === "development" && anvilAddrs) {
-    return anvilAddrs;
-  }
+  if (env.profile === "development" && anvilAddrs) return anvilAddrs;
   const a = ADDRESSES[env.chainId];
   if (!a) throw new Error(`[wagmi] No addresses for chainId ${env.chainId}`);
   return a;
 }
 
-// ---------- wagmi config ----------
+// ---------- RPC ----------
 
 const alchemyRpc = (subdomain: string): string =>
   env.alchemyKey
@@ -62,8 +53,33 @@ const alchemyRpc = (subdomain: string): string =>
       ? "https://sepolia.base.org"
       : "https://mainnet.base.org";
 
+// ---------- Connectors ----------
+
+const connectors = env.wcProjectId
+  ? [
+      walletConnect({
+        projectId: env.wcProjectId,
+        metadata: {
+          name: "PartNA Wallet",
+          description: "Rotating savings circles on Base",
+          url: "https://partna.app",
+          icons: ["https://dist-dusky-omega.vercel.app/favicon.ico"],
+        },
+        showQrModal: true,
+      }),
+      injected({ shimDisconnect: true }),
+      coinbaseWallet({
+        appName: "PartNA Wallet",
+        appLogoUrl: "https://dist-dusky-omega.vercel.app/favicon.ico",
+      }),
+    ]
+  : [injected({ shimDisconnect: true })];
+
+// ---------- Config ----------
+
 export const wagmiConfig = createConfig({
   chains: [base, baseSepolia, foundry],
+  connectors,
   transports: {
     [base.id]: http(alchemyRpc("base-mainnet")),
     [baseSepolia.id]: http(alchemyRpc("base-sepolia")),

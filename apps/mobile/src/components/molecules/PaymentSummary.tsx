@@ -1,10 +1,10 @@
 /**
- * PaymentSummary — balance before / gas / balance after breakdown.
+ * PaymentSummary — dark-mode breakdown card.
  */
 
 import { memo } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { colors, spacing, typography } from "../../theme";
+import { colors } from "../../theme";
 
 interface PaymentSummaryProps {
   balanceBefore: string;
@@ -13,11 +13,11 @@ interface PaymentSummaryProps {
   balanceAfter: string;
 }
 
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold, green }: { label: string; value: string; bold?: boolean; green?: boolean }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={[styles.value, bold && styles.bold]}>{value}</Text>
+      <Text style={[styles.label, bold && styles.boldLabel]}>{label}</Text>
+      <Text style={[styles.value, bold && styles.boldValue, green && styles.greenValue]}>{value}</Text>
     </View>
   );
 }
@@ -29,7 +29,7 @@ function PaymentSummaryInner({ balanceBefore, amount, estimatedGas, balanceAfter
       <Row label="Payment" value={`-$${amount}`} />
       <Row label="Gas (est.)" value={`~$${estimatedGas}`} />
       <View style={styles.divider} />
-      <Row label="After" value={`$${balanceAfter}`} bold />
+      <Row label="After payment" value={`$${balanceAfter}`} bold green />
     </View>
   );
 }
@@ -38,16 +38,18 @@ const styles = StyleSheet.create({
   root: {
     backgroundColor: colors.bg.surface,
     borderRadius: 14,
-    padding: spacing.s4,
-    gap: spacing.s2,
+    padding: 16,
+    gap: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  row: { flexDirection: "row", justifyContent: "space-between" },
-  label: { ...typography.body, color: colors.ink.muted },
-  value: { ...typography.body, color: colors.ink.primary },
-  bold: { ...typography.bodyMedium, color: colors.ink.primary },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.s1 },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  label: { fontSize: 13, color: "rgba(255,255,255,0.45)" },
+  value: { fontSize: 13, fontWeight: "600", color: "rgba(255,255,255,0.7)", fontFamily: "monospace" },
+  boldLabel: { fontWeight: "600", color: colors.ink.primary },
+  boldValue: { fontWeight: "700", color: colors.ink.primary },
+  greenValue: { color: colors.brand.greenLight },
+  divider: { height: 1, backgroundColor: colors.border },
 });
 
 export const PaymentSummary = memo(PaymentSummaryInner);
