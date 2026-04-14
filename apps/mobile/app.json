@@ -1,6 +1,11 @@
 {
   "expo": {
     "name": "PartNA Wallet",
-    "slug": "partna-wallet"
+    "slug": "partna-wallet",
+    "extra": {
+      "eas": {
+        "projectId": "ec6e5618-a5f9-47dd-911a-6fa0f327c2fb"
+      }
+    }
   }
 }

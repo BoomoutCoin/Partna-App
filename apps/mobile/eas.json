@@ -4,7 +4,12 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "node": "20.18.0",
+      "pnpm": "9.15.9"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -19,9 +24,11 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "env": {
-        "APP_ENV": "staging"
+        "APP_ENV": "staging",
+        "EXPO_PUBLIC_WC_PROJECT_ID": "a39f9a1b4f84621d56890bf315096211"
       },
       "android": {
         "buildType": "apk"
@@ -32,9 +39,11 @@
       "channel": "preview"
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_WC_PROJECT_ID": "a39f9a1b4f84621d56890bf315096211"
       },
       "android": {
         "buildType": "app-bundle"
